@@ -8,6 +8,16 @@ from app.models.guardian_link import (
     GuardianPriorityEnum,
     ConsentStatusEnum,
 )
+from app.models.volunteer import (
+    VolunteerProfile,
+    VolunteerAvailabilityEnum,
+)
+from app.models.security_staff import SecurityProfile
+from app.models.emergency_contact import (
+    EmergencyContact,
+    ContactTypeEnum,
+    ContactVerificationStatusEnum,
+)
 
 __all__ = [
     "User",
@@ -21,4 +31,10 @@ __all__ = [
     "GuardianLink",
     "GuardianPriorityEnum",
     "ConsentStatusEnum",
+    "VolunteerProfile",
+    "VolunteerAvailabilityEnum",
+    "SecurityProfile",
+    "EmergencyContact",
+    "ContactTypeEnum",
+    "ContactVerificationStatusEnum",
 ]

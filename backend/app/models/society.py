@@ -94,6 +94,19 @@ class Society(Base):
         "Block",
         back_populates="society",
         cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    volunteers: Mapped[List["VolunteerProfile"]] = relationship(
+        "VolunteerProfile",
+        back_populates="society",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    security_staff: Mapped[List["SecurityProfile"]] = relationship(
+        "SecurityProfile",
+        back_populates="society",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     def __repr__(self) -> str:
@@ -197,5 +210,7 @@ class Flat(Base):
         return f"<Flat id={self.id} unit='{self.unit_number}' block_id={self.block_id}>"
 
 
-# Import User for type resolution in relationship
+# Import related models for type resolution in relationships
 from app.models.user import User  # noqa: E402
+from app.models.volunteer import VolunteerProfile  # noqa: E402
+from app.models.security_staff import SecurityProfile  # noqa: E402

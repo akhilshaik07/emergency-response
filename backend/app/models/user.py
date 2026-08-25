@@ -2,7 +2,7 @@
 
 import enum
 import uuid
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import String, Boolean, DateTime, Enum, text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -85,6 +85,28 @@ class User(Base):
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    volunteer_profile: Mapped[Optional["VolunteerProfile"]] = relationship(
+        "VolunteerProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    security_profile: Mapped[Optional["SecurityProfile"]] = relationship(
+        "SecurityProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    emergency_contacts: Mapped[List["EmergencyContact"]] = relationship(
+        "EmergencyContact",
+        foreign_keys="EmergencyContact.resident_id",
+        back_populates="resident",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     def __repr__(self) -> str:
@@ -92,3 +114,6 @@ class User(Base):
 
 
 from app.models.resident import ResidentProfile  # noqa: E402
+from app.models.volunteer import VolunteerProfile  # noqa: E402
+from app.models.security_staff import SecurityProfile  # noqa: E402
+from app.models.emergency_contact import EmergencyContact  # noqa: E402
