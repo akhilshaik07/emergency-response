@@ -2,9 +2,10 @@
 
 import enum
 import uuid
+from typing import Optional
 from sqlalchemy import String, Boolean, DateTime, Enum, text, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.base import Base
 
 
@@ -78,5 +79,16 @@ class User(Base):
         nullable=False,
     )
 
+    # Relationships
+    resident_profile: Mapped[Optional["ResidentProfile"]] = relationship(
+        "ResidentProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return f"<User id={self.id} email='{self.email}' phone='{self.phone}' role={self.role.value}>"
+
+
+from app.models.resident import ResidentProfile  # noqa: E402
