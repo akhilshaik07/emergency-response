@@ -10,6 +10,9 @@ venv/
 backend/venv/
 *.egg-info/
 .pytest_cache/
+.coverage
+htmlcov/
+
 
 # Node / Frontend / Mobile
 node_modules/
