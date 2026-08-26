@@ -38,3 +38,14 @@ async def health_db_check(db: AsyncSession = Depends(get_db)):
     if val == 1:
         return {"status": "ok", "db": "connected"}
     return {"status": "error", "db": "unhealthy"}
+
+
+# Include domain routers
+from app.api.routes.auth import router as auth_router
+from app.api.routes.users import router as users_router
+from app.api.routes.societies import router as societies_router
+
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(societies_router)
+
