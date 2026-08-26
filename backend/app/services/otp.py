@@ -53,6 +53,16 @@ class OtpService:
         The OTP code is NEVER returned in API responses.
         """
         logger.info(f"[DEV-OTP] OTP code for {phone} (purpose={purpose.value}): {code}")
+        # Prominent console banner for local developer visibility
+        print(
+            f"\n======================================================\n"
+            f" [DEV-OTP] Verification Code for {phone}\n"
+            f" Purpose: {purpose.value}\n"
+            f" CODE:    {code}\n"
+            f"======================================================\n",
+            flush=True,
+        )
+
 
 
 async def check_otp_rate_limit(
