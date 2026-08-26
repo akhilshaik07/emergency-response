@@ -18,6 +18,10 @@ from app.models.emergency_contact import (
     ContactTypeEnum,
     ContactVerificationStatusEnum,
 )
+from app.models.otp_code import (
+    OtpCode,
+    OtpPurposeEnum,
+)
 
 __all__ = [
     "User",
@@ -37,4 +41,7 @@ __all__ = [
     "EmergencyContact",
     "ContactTypeEnum",
     "ContactVerificationStatusEnum",
+    "OtpCode",
+    "OtpPurposeEnum",
 ]
+

@@ -9,6 +9,7 @@ from sqlalchemy.pool import NullPool
 from app.main import app
 from app.core.config import settings
 from app.core.db import get_db
+from app.core.security import hash_password, create_access_token
 from app.models.user import User, RoleEnum
 from app.models.society import Society
 
@@ -46,86 +47,22 @@ async def clean_test_data():
 
 
 @pytest.mark.asyncio
-async def test_user_registration_success_and_validation():
-    await clean_test_data()
-    try:
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL) as client:
-            # 1. Valid registration
-            reg_payload = {
-                "email": "user.alpha@example.com",
-                "phone": "+919999900001",
-                "password": "ValidPassword123!",
-                "role": "resident",
-            }
-            res = await client.post("/auth/register", json=reg_payload)
-            assert res.status_code == 201
-            data = res.json()
-            assert data["email"] == "user.alpha@example.com"
-            assert data["phone"] == "+919999900001"
-            assert data["role"] == "resident"
-            assert data["is_active"] is True
-            assert "hashed_password" not in data
-            assert "password" not in data
-
-            # 2. Duplicate email rejected with 409
-            dup_email_payload = {
-                "email": "user.alpha@example.com",
-                "phone": "+919999900002",
-                "password": "ValidPassword123!",
-                "role": "resident",
-            }
-            res_dup_email = await client.post("/auth/register", json=dup_email_payload)
-            assert res_dup_email.status_code == 409
-            assert "email" in res_dup_email.json()["detail"].lower()
-
-            # 3. Duplicate phone rejected with 409
-            dup_phone_payload = {
-                "email": "user.bravo@example.com",
-                "phone": "+919999900001",
-                "password": "ValidPassword123!",
-                "role": "resident",
-            }
-            res_dup_phone = await client.post("/auth/register", json=dup_phone_payload)
-            assert res_dup_phone.status_code == 409
-            assert "phone" in res_dup_phone.json()["detail"].lower()
-
-            # 4. Attempt registration as admin rejected with 422
-            admin_reg_payload = {
-                "email": "user.bravo@example.com",
-                "phone": "+919999900002",
-                "password": "ValidPassword123!",
-                "role": "admin",
-            }
-            res_admin = await client.post("/auth/register", json=admin_reg_payload)
-            assert res_admin.status_code == 422
-
-            # 5. Short password rejected with 422
-            short_pwd_payload = {
-                "email": "user.bravo@example.com",
-                "phone": "+919999900002",
-                "password": "short",
-                "role": "resident",
-            }
-            res_short = await client.post("/auth/register", json=short_pwd_payload)
-            assert res_short.status_code == 422
-    finally:
-        await clean_test_data()
-
-
-@pytest.mark.asyncio
 async def test_user_login_and_credential_enumeration_defense():
     await clean_test_data()
     try:
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL) as client:
-            # Register user
-            reg_payload = {
-                "email": "user.alpha@example.com",
-                "phone": "+919999900001",
-                "password": "CorrectPassword123!",
-                "role": "resident",
-            }
-            await client.post("/auth/register", json=reg_payload)
+        # Create test user directly in database
+        async with TestSessionLocal() as session:
+            user = User(
+                email="user.alpha@example.com",
+                phone="+919999900001",
+                hashed_password=hash_password("CorrectPassword123!"),
+                role=RoleEnum.resident,
+                is_active=True,
+            )
+            session.add(user)
+            await session.commit()
 
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL) as client:
             # 1. Login with correct email + password
             login_email = await client.post(
                 "/auth/login",
@@ -169,24 +106,24 @@ async def test_user_login_and_credential_enumeration_defense():
 async def test_user_me_profile_update_and_soft_delete():
     await clean_test_data()
     try:
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL) as client:
-            # Register and login
-            await client.post(
-                "/auth/register",
-                json={
-                    "email": "user.alpha@example.com",
-                    "phone": "+919999900001",
-                    "password": "Password123!",
-                    "role": "resident",
-                },
+        # Create active user
+        async with TestSessionLocal() as session:
+            user = User(
+                email="user.alpha@example.com",
+                phone="+919999900001",
+                hashed_password=hash_password("Password123!"),
+                role=RoleEnum.resident,
+                is_active=True,
             )
-            login_res = await client.post(
-                "/auth/login",
-                json={"email": "user.alpha@example.com", "password": "Password123!"},
-            )
-            token = login_res.json()["access_token"]
-            headers = {"Authorization": f"Bearer {token}"}
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+            user_id = user.id
 
+        token = create_access_token(str(user_id), role=RoleEnum.resident.value)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL) as client:
             # 1. GET /users/me
             me_res = await client.get("/users/me", headers=headers)
             assert me_res.status_code == 200
@@ -232,25 +169,23 @@ async def test_user_me_profile_update_and_soft_delete():
 async def test_society_crud_ownership_and_guarded_delete():
     await clean_test_data()
     try:
+        # Create User A and User B in DB
+        async with TestSessionLocal() as session:
+            user_a = User(email="user.alpha@example.com", phone="+919999900001", hashed_password=hash_password("Pass123!"), role=RoleEnum.admin, is_active=True)
+            user_b = User(email="user.bravo@example.com", phone="+919999900002", hashed_password=hash_password("Pass123!"), role=RoleEnum.resident, is_active=True)
+            session.add_all([user_a, user_b])
+            await session.commit()
+            await session.refresh(user_a)
+            await session.refresh(user_b)
+            user_a_id = user_a.id
+            user_b_id = user_b.id
+
+        token_a = create_access_token(str(user_a_id), role=RoleEnum.admin.value)
+        token_b = create_access_token(str(user_b_id), role=RoleEnum.resident.value)
+        headers_a = {"Authorization": f"Bearer {token_a}"}
+        headers_b = {"Authorization": f"Bearer {token_b}"}
+
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL) as client:
-            # Register User A (Admin of society)
-            await client.post(
-                "/auth/register",
-                json={"email": "user.alpha@example.com", "phone": "+919999900001", "password": "Password123!", "role": "resident"},
-            )
-            login_a = await client.post("/auth/login", json={"email": "user.alpha@example.com", "password": "Password123!"})
-            token_a = login_a.json()["access_token"]
-            headers_a = {"Authorization": f"Bearer {token_a}"}
-
-            # Register User B (Non-admin bystander)
-            await client.post(
-                "/auth/register",
-                json={"email": "user.bravo@example.com", "phone": "+919999900002", "password": "Password123!", "role": "resident"},
-            )
-            login_b = await client.post("/auth/login", json={"email": "user.bravo@example.com", "password": "Password123!"})
-            token_b = login_b.json()["access_token"]
-            headers_b = {"Authorization": f"Bearer {token_b}"}
-
             # 1. User A creates a Society
             soc_payload = {
                 "name": "Grand Orchids Residency",

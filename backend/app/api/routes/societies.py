@@ -6,7 +6,8 @@ from typing import Annotated, Dict
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_current_user
+
+from app.api.deps import get_current_user, require_society_scope
 from app.core.db import get_db
 from app.models.user import User
 from app.models.society import Society
@@ -34,10 +35,9 @@ async def create_society(
 ) -> Society:
     """Create a new society with the authenticated user designated as society admin.
 
-    TODO (TEMPORARY PERMISSIVENESS GAP):
-    This endpoint currently allows ANY authenticated user to create a society and become its admin.
-    In the next phase, this MUST be restricted using `require_role(RoleEnum.admin, RoleEnum.superadmin)`
-    once full role guards are introduced.
+    DESIGN CONFIRMATION:
+    Creating a new society has no pre-existing resource to scope against.
+    Any authenticated user creating a society becomes its administrator.
     """
     society = Society(
         name=payload.name,
@@ -68,9 +68,10 @@ async def get_society_by_id(
 ) -> Society:
     """Retrieve details for a specific society.
 
-    TODO (TEMPORARY PERMISSIVENESS GAP):
-    Currently allows any authenticated user to view any society details.
-    Will be scoped via `require_society_scope` in subsequent steps.
+    SCOPING NOTE (FOLLOW-UP DECISION):
+    Currently open to any authenticated user for read access.
+    In Phase 4, once resident/volunteer/security profiles are tied to societies,
+    a society-member read scope will be evaluated.
     """
     result = await db.execute(select(Society).where(Society.id == society_id))
     society = result.scalar_one_or_none()
@@ -93,29 +94,14 @@ async def update_society(
     society_id: uuid.UUID,
     payload: SocietyUpdateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
+    society: Annotated[Society, Depends(require_society_scope)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Society:
     """Update society metadata.
 
-    OWNERSHIP RESTRICTION:
-    Only the assigned `admin_id` of the society can modify its properties.
+    AUTHORIZATION GUARD:
+    Protected via `require_society_scope` dependency (allows assigned admin or superadmin).
     """
-    result = await db.execute(select(Society).where(Society.id == society_id))
-    society = result.scalar_one_or_none()
-
-    if society is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Society not found.",
-        )
-
-    # Ownership check
-    if society.admin_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden: Only the society administrator can update this society.",
-        )
-
     # Apply partial updates
     if payload.name is not None:
         society.name = payload.name
@@ -132,7 +118,7 @@ async def update_society(
 
     await db.commit()
     await db.refresh(society)
-    logger.info(f"AUDIT: Society '{society.name}' (id={society.id}) updated by admin user {current_user.id}")
+    logger.info(f"AUDIT: Society '{society.name}' (id={society.id}) updated by user {current_user.id}")
     return society
 
 
@@ -145,31 +131,16 @@ async def delete_society(
     society_id: uuid.UUID,
     payload: SocietyDeleteRequest,
     current_user: Annotated[User, Depends(get_current_user)],
+    society: Annotated[Society, Depends(require_society_scope)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Dict[str, str]:
     """Permanently delete a society.
 
     SAFETY AND AUDITING GUARDS:
-    1. Ownership check: strictly restricted to the society's admin.
-    2. Confirmation check: client must send `confirmation_name == society.name`.
-    3. Action is recorded to application audit logs.
+    1. Scope guard: `require_society_scope` (society admin or superadmin).
+    2. Confirmation guard: client must provide exact matching `confirmation_name`.
+    3. Audit logging before deletion.
     """
-    result = await db.execute(select(Society).where(Society.id == society_id))
-    society = result.scalar_one_or_none()
-
-    if society is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Society not found.",
-        )
-
-    # Ownership check
-    if society.admin_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden: Only the society administrator can delete this society.",
-        )
-
     # Confirmation name match check
     if payload.confirmation_name != society.name:
         raise HTTPException(
@@ -178,9 +149,8 @@ async def delete_society(
         )
 
     society_name = society.name
-    # Audit log entry before deletion
     logger.warning(
-        f"CRITICAL AUDIT: Society '{society_name}' (id={society.id}) DELETED by admin user {current_user.id} ({current_user.email})"
+        f"CRITICAL AUDIT: Society '{society_name}' (id={society.id}) DELETED by user {current_user.id} ({current_user.email})"
     )
 
     await db.delete(society)
