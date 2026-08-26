@@ -3,7 +3,7 @@
 import enum
 import uuid
 from datetime import date
-from typing import Optional
+from typing import Optional, Any, List, Dict
 from sqlalchemy import (
     String,
     Date,
@@ -13,7 +13,7 @@ from sqlalchemy import (
     text,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.base import Base
 
@@ -71,6 +71,19 @@ class ResidentProfile(Base):
         default=ResidentStatusEnum.active,
         server_default=text("'active'"),
         nullable=False,
+    )
+
+    # UNCONFIRMED FACULTY REQUIREMENT SCAFFOLDING:
+    # Denormalized proximity cache storing pre-computed or nearby residents/volunteers.
+    # Assumed payload shape:
+    # [{"user_id": "<uuid>", "name": "...", "flat": "...", "distance_m": ...}]
+    # NOTE: Normalized tables (flats, resident_profiles, volunteer_profiles) remain the single
+    # source of truth. This field may be stale or empty (None) at any time; no application
+    # subsystem should treat its absence as a fatal error.
+    nearby_neighbours: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=None,
     )
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True),
