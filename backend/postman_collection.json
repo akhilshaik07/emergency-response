@@ -1,0 +1,350 @@
+{
+	"info": {
+		"_postman_id": "893c56a1-9494-4d89-9407-28d8cb30b355",
+		"name": "Community Emergency Response Platform API",
+		"description": "Postman Collection for testing all Phase 3 Emergency Response Platform API endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "society_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0. Health & DB Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/health/db",
+					"host": ["{{baseUrl}}"],
+					"path": ["health", "db"]
+				}
+			}
+		},
+		{
+			"name": "1. Request Registration OTP",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"phone\": \"+919876543210\",\n    \"email\": \"postman.user@example.com\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/register/request-otp",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "register", "request-otp"]
+				}
+			}
+		},
+		{
+			"name": "2. Verify Registration OTP",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"phone\": \"+919876543210\",\n    \"code\": \"PASTE_CODE_FROM_TERMINAL_HERE\",\n    \"email\": \"postman.user@example.com\",\n    \"password\": \"StrongPassword123!\",\n    \"role\": \"resident\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/register/verify-otp",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "register", "verify-otp"]
+				}
+			}
+		},
+		{
+			"name": "3. Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"if (jsonData.access_token) {",
+							"    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
+							"    pm.collectionVariables.set(\"refresh_token\", jsonData.refresh_token);",
+							"    console.log(\"Saved access_token automatically!\");",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"postman.user@example.com\",\n    \"password\": \"StrongPassword123!\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/login",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "login"]
+				}
+			}
+		},
+		{
+			"name": "4. Get My Profile",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/users/me",
+					"host": ["{{baseUrl}}"],
+					"path": ["users", "me"]
+				}
+			}
+		},
+		{
+			"name": "5. Update My Profile",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"phone\": \"+919876543299\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/users/me",
+					"host": ["{{baseUrl}}"],
+					"path": ["users", "me"]
+				}
+			}
+		},
+		{
+			"name": "6. Refresh Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"if (jsonData.access_token) {",
+							"    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
+							"    pm.collectionVariables.set(\"refresh_token\", jsonData.refresh_token);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/refresh",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "refresh"]
+				}
+			}
+		},
+		{
+			"name": "7. Create Society",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"if (jsonData.id) {",
+							"    pm.collectionVariables.set(\"society_id\", jsonData.id);",
+							"    console.log(\"Saved society_id:\", jsonData.id);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Greenwood Palms Estate\",\n    \"address\": \"12 Palm Tree Boulevard, Sector 45\",\n    \"latitude\": 12.9716,\n    \"longitude\": 77.5946,\n    \"rwa_license_number\": \"RWA-2026-901\",\n    \"response_window_seconds\": 120\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/societies",
+					"host": ["{{baseUrl}}"],
+					"path": ["societies"]
+				}
+			}
+		},
+		{
+			"name": "8. Get Society by ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/societies/{{society_id}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["societies", "{{society_id}}"]
+				}
+			}
+		},
+		{
+			"name": "9. Update Society",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Greenwood Palms Heights\",\n    \"response_window_seconds\": 90\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/societies/{{society_id}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["societies", "{{society_id}}"]
+				}
+			}
+		},
+		{
+			"name": "10. Delete Society (Guarded with Confirmation)",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"confirmation_name\": \"Greenwood Palms Heights\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/societies/{{society_id}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["societies", "{{society_id}}"]
+				}
+			}
+		},
+		{
+			"name": "11. Request Password Reset OTP",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"identifier\": \"postman.user@example.com\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/password-reset/request-otp",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "password-reset", "request-otp"]
+				}
+			}
+		},
+		{
+			"name": "12. Verify Password Reset OTP",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"identifier\": \"postman.user@example.com\",\n    \"code\": \"PASTE_CODE_FROM_TERMINAL_HERE\",\n    \"new_password\": \"NewSuperPassword456!\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/password-reset/verify-and-reset",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "password-reset", "verify-and-reset"]
+				}
+			}
+		}
+	]
+}
