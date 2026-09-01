@@ -1,14 +1,14 @@
 {
 	"info": {
-		"_postman_id": "893c56a1-9494-4d89-9407-28d8cb30b355",
-		"name": "Community Emergency Response Platform API",
-		"description": "Postman Collection for testing all Phase 3 Emergency Response Platform API endpoints.",
+		"_postman_id": "4b7b2512-87a3-485a-a38f-9a1b899dc6a9",
+		"name": "Community Emergency Response Platform (Django DRF)",
+		"description": "Postman Collection strictly matching the mentor assignment grading checklist.\nIncludes Email/Mobile Login, JWT Authentication, Token-Scoped Profile CRUD, Role-Scoped Gated Society CRUD, and auto Bearer token injection.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:8000",
+			"value": "http://127.0.0.1:8000",
 			"type": "string"
 		},
 		{
@@ -23,25 +23,13 @@
 		},
 		{
 			"key": "society_id",
-			"value": "",
+			"value": "1",
 			"type": "string"
 		}
 	],
 	"item": [
 		{
-			"name": "0. Health & DB Check",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{baseUrl}}/health/db",
-					"host": ["{{baseUrl}}"],
-					"path": ["health", "db"]
-				}
-			}
-		},
-		{
-			"name": "1. Request Registration OTP",
+			"name": "1. Auth - Register (Resident / Guardian)",
 			"request": {
 				"method": "POST",
 				"header": [
@@ -52,48 +40,27 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"phone\": \"+919876543210\",\n    \"email\": \"postman.user@example.com\"\n}"
+					"raw": "{\n    \"email\": \"resident@example.com\",\n    \"mobile\": \"+919876500001\",\n    \"password\": \"Password123!\",\n    \"first_name\": \"Aarav\",\n    \"last_name\": \"Patel\",\n    \"group_id\": 5,\n    \"emergency_contact1\": {\n        \"name\": \"Pooja Patel\",\n        \"mobile\": \"+919876500099\",\n        \"relationship\": \"Spouse\"\n    },\n    \"medical_condition\": {\n        \"allergies\": \"Penicillin\",\n        \"blood_group\": \"O+\"\n    }\n}"
 				},
 				"url": {
-					"raw": "{{baseUrl}}/auth/register/request-otp",
+					"raw": "{{baseUrl}}/api/auth/register/",
 					"host": ["{{baseUrl}}"],
-					"path": ["auth", "register", "request-otp"]
+					"path": ["api", "auth", "register", ""]
 				}
 			}
 		},
 		{
-			"name": "2. Verify Registration OTP",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"phone\": \"+919876543210\",\n    \"code\": \"PASTE_CODE_FROM_TERMINAL_HERE\",\n    \"email\": \"postman.user@example.com\",\n    \"password\": \"StrongPassword123!\",\n    \"role\": \"resident\"\n}"
-				},
-				"url": {
-					"raw": "{{baseUrl}}/auth/register/verify-otp",
-					"host": ["{{baseUrl}}"],
-					"path": ["auth", "register", "verify-otp"]
-				}
-			}
-		},
-		{
-			"name": "3. Login",
+			"name": "2. Auth - Login with Email",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
 							"var jsonData = pm.response.json();",
-							"if (jsonData.access_token) {",
-							"    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
-							"    pm.collectionVariables.set(\"refresh_token\", jsonData.refresh_token);",
-							"    console.log(\"Saved access_token automatically!\");",
+							"if (jsonData.access) {",
+							"    pm.collectionVariables.set(\"access_token\", jsonData.access);",
+							"    pm.collectionVariables.set(\"refresh_token\", jsonData.refresh);",
+							"    console.log(\"Saved access_token from Email Login!\");",
 							"}"
 						],
 						"type": "text/javascript"
@@ -110,17 +77,89 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"postman.user@example.com\",\n    \"password\": \"StrongPassword123!\"\n}"
+					"raw": "{\n    \"email\": \"resident@example.com\",\n    \"password\": \"Password123!\"\n}"
 				},
 				"url": {
-					"raw": "{{baseUrl}}/auth/login",
+					"raw": "{{baseUrl}}/api/auth/login/",
 					"host": ["{{baseUrl}}"],
-					"path": ["auth", "login"]
+					"path": ["api", "auth", "login", ""]
 				}
 			}
 		},
 		{
-			"name": "4. Get My Profile",
+			"name": "3. Auth - Login with Mobile (Mentor Spec)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"if (jsonData.access) {",
+							"    pm.collectionVariables.set(\"access_token\", jsonData.access);",
+							"    pm.collectionVariables.set(\"refresh_token\", jsonData.refresh);",
+							"    console.log(\"Saved access_token from Mobile Login!\");",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"mobile\": \"+919876500001\",\n    \"password\": \"Password123!\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/login/",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "auth", "login", ""]
+				}
+			}
+		},
+		{
+			"name": "4. Auth - Token Refresh",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"if (jsonData.access) {",
+							"    pm.collectionVariables.set(\"access_token\", jsonData.access);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"refresh\": \"{{refresh_token}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/token/refresh/",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "auth", "token", "refresh", ""]
+				}
+			}
+		},
+		{
+			"name": "5. Profile - Get My Profile (Token Scoped)",
 			"request": {
 				"method": "GET",
 				"header": [
@@ -130,14 +169,14 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/users/me",
+					"raw": "{{baseUrl}}/api/profile/me/",
 					"host": ["{{baseUrl}}"],
-					"path": ["users", "me"]
+					"path": ["api", "profile", "me", ""]
 				}
 			}
 		},
 		{
-			"name": "5. Update My Profile",
+			"name": "6. Profile - Update My Profile (Token Scoped)",
 			"request": {
 				"method": "PATCH",
 				"header": [
@@ -152,53 +191,34 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"phone\": \"+919876543299\"\n}"
+					"raw": "{\n    \"first_name\": \"Aarav Updated\",\n    \"emergency_contact2\": {\n        \"name\": \"Vikram Patel\",\n        \"mobile\": \"+919876500088\",\n        \"relationship\": \"Brother\"\n    }\n}"
 				},
 				"url": {
-					"raw": "{{baseUrl}}/users/me",
+					"raw": "{{baseUrl}}/api/profile/me/",
 					"host": ["{{baseUrl}}"],
-					"path": ["users", "me"]
+					"path": ["api", "profile", "me", ""]
 				}
 			}
 		},
 		{
-			"name": "6. Refresh Token",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"var jsonData = pm.response.json();",
-							"if (jsonData.access_token) {",
-							"    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
-							"    pm.collectionVariables.set(\"refresh_token\", jsonData.refresh_token);",
-							"}"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
+			"name": "7. Profile - Deactivate / Delete Account",
 			"request": {
-				"method": "POST",
+				"method": "DELETE",
 				"header": [
 					{
-						"key": "Content-Type",
-						"value": "application/json"
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
-				},
 				"url": {
-					"raw": "{{baseUrl}}/auth/refresh",
+					"raw": "{{baseUrl}}/api/profile/me/",
 					"host": ["{{baseUrl}}"],
-					"path": ["auth", "refresh"]
+					"path": ["api", "profile", "me", ""]
 				}
 			}
 		},
 		{
-			"name": "7. Create Society",
+			"name": "8. Gated Society - Add (Admin Only)",
 			"event": [
 				{
 					"listen": "test",
@@ -206,7 +226,7 @@
 						"exec": [
 							"var jsonData = pm.response.json();",
 							"if (jsonData.id) {",
-							"    pm.collectionVariables.set(\"society_id\", jsonData.id);",
+							"    pm.collectionVariables.set(\"society_id\", jsonData.id.toString());",
 							"    console.log(\"Saved society_id:\", jsonData.id);",
 							"}"
 						],
@@ -228,17 +248,17 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"name\": \"Greenwood Palms Estate\",\n    \"address\": \"12 Palm Tree Boulevard, Sector 45\",\n    \"latitude\": 12.9716,\n    \"longitude\": 77.5946,\n    \"rwa_license_number\": \"RWA-2026-901\",\n    \"response_window_seconds\": 120\n}"
+					"raw": "{\n    \"name\": \"Greenwood Palms Estate\",\n    \"owner\": \"Greenwood Developers\",\n    \"in_charge\": \"Security Officer Roy\"\n}"
 				},
 				"url": {
-					"raw": "{{baseUrl}}/societies",
+					"raw": "{{baseUrl}}/api/societies/",
 					"host": ["{{baseUrl}}"],
-					"path": ["societies"]
+					"path": ["api", "societies", ""]
 				}
 			}
 		},
 		{
-			"name": "8. Get Society by ID",
+			"name": "9. Gated Society - Get All / Own Society",
 			"request": {
 				"method": "GET",
 				"header": [
@@ -248,14 +268,31 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/societies/{{society_id}}",
+					"raw": "{{baseUrl}}/api/societies/",
 					"host": ["{{baseUrl}}"],
-					"path": ["societies", "{{society_id}}"]
+					"path": ["api", "societies", ""]
 				}
 			}
 		},
 		{
-			"name": "9. Update Society",
+			"name": "10. Gated Society - Get Detail (WHERE id = ?)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/societies/{{society_id}}/",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "societies", "{{society_id}}", ""]
+				}
+			}
+		},
+		{
+			"name": "11. Gated Society - Edit (WHERE id = ?)",
 			"request": {
 				"method": "PATCH",
 				"header": [
@@ -270,79 +307,29 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"name\": \"Greenwood Palms Heights\",\n    \"response_window_seconds\": 90\n}"
+					"raw": "{\n    \"in_charge\": \"Captain Sharma\"\n}"
 				},
 				"url": {
-					"raw": "{{baseUrl}}/societies/{{society_id}}",
+					"raw": "{{baseUrl}}/api/societies/{{society_id}}/",
 					"host": ["{{baseUrl}}"],
-					"path": ["societies", "{{society_id}}"]
+					"path": ["api", "societies", "{{society_id}}", ""]
 				}
 			}
 		},
 		{
-			"name": "10. Delete Society (Guarded with Confirmation)",
+			"name": "12. Gated Society - Delete (WHERE id = ?)",
 			"request": {
 				"method": "DELETE",
 				"header": [
 					{
 						"key": "Authorization",
 						"value": "Bearer {{access_token}}"
-					},
-					{
-						"key": "Content-Type",
-						"value": "application/json"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"confirmation_name\": \"Greenwood Palms Heights\"\n}"
-				},
 				"url": {
-					"raw": "{{baseUrl}}/societies/{{society_id}}",
+					"raw": "{{baseUrl}}/api/societies/{{society_id}}/",
 					"host": ["{{baseUrl}}"],
-					"path": ["societies", "{{society_id}}"]
-				}
-			}
-		},
-		{
-			"name": "11. Request Password Reset OTP",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"identifier\": \"postman.user@example.com\"\n}"
-				},
-				"url": {
-					"raw": "{{baseUrl}}/auth/password-reset/request-otp",
-					"host": ["{{baseUrl}}"],
-					"path": ["auth", "password-reset", "request-otp"]
-				}
-			}
-		},
-		{
-			"name": "12. Verify Password Reset OTP",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"identifier\": \"postman.user@example.com\",\n    \"code\": \"PASTE_CODE_FROM_TERMINAL_HERE\",\n    \"new_password\": \"NewSuperPassword456!\"\n}"
-				},
-				"url": {
-					"raw": "{{baseUrl}}/auth/password-reset/verify-and-reset",
-					"host": ["{{baseUrl}}"],
-					"path": ["auth", "password-reset", "verify-and-reset"]
+					"path": ["api", "societies", "{{society_id}}", ""]
 				}
 			}
 		}
