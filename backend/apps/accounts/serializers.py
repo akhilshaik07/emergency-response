@@ -105,9 +105,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate_group_id(self, value):
-        # MENTOR SPEC: Admin (2) and Super Admin (1) cannot self-register
-        if value in [1, 2]:
-            raise serializers.ValidationError("Registration as Admin or Super Admin is not permitted via public registration.")
+        # MENTOR SPEC: Super Admin (1), Admin (2), and Sub Admin (3) cannot self-register
+        if value in [1, 2, 3]:
+            raise serializers.ValidationError("Registration for Super Admin, Admin, and Sub Admin is invite-only and not permitted via public registration.")
         if not Group.objects.filter(id=value).exists():
             raise serializers.ValidationError(f"Group with ID {value} does not exist.")
         return value

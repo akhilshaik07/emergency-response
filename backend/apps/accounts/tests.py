@@ -65,8 +65,8 @@ class AuthAndProfileTests(TestCase):
         self.assertEqual(response.data["mobile"], "+919876500003")
 
     def test_register_admin_role_rejected(self):
-        """MENTOR SPEC: Admin (2) and Super Admin (1) cannot self-register."""
-        for role_id in [1, 2]:
+        """MENTOR SPEC: Super Admin (1), Admin (2), and Sub Admin (3) cannot self-register."""
+        for role_id in [1, 2, 3]:
             payload = {
                 "email": f"hacker.admin{role_id}@example.com",
                 "mobile": f"+91987650001{role_id}",
