@@ -1,16 +1,39 @@
 """Django settings for Emergency Response Platform project."""
 
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-emergency-response-platform-super-secret-key-2026')
+def _env_bool(name, default=False):
+    """Read a boolean environment variable using explicit true/false values."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+def _env_list(name, default):
+    """Read a comma-separated environment variable into a trimmed list."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+IS_TESTING = 'test' in sys.argv or _env_bool('DJANGO_TESTING')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if IS_TESTING:
+        SECRET_KEY = 'test-only-secret-key'
+    else:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set outside tests.')
+
+DEBUG = _env_bool('DJANGO_DEBUG', False)
+ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', ['localhost', '127.0.0.1'])
 
 # Application definition
 INSTALLED_APPS = [
@@ -65,9 +88,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database configuration (PostgreSQL for development/production, in-memory SQLite for tests)
-import sys
-if 'test' in sys.argv:
+# Database configuration (PostgreSQL for development/production, in-memory SQLite for tests).
+if IS_TESTING:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -78,11 +100,11 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'community_response_db',
-            'USER': 'erp_app_user',
-            'PASSWORD': 'KAmxGbGkvN5V7nTgWRJLerNrDJWMh9E7',
-            'HOST': 'localhost',
-            'PORT': '5432',
+            'NAME': os.getenv('POSTGRES_DB', 'community_response_db'),
+            'USER': os.getenv('POSTGRES_USER', 'erp_app_user'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+            'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
         }
     }
 
@@ -128,5 +150,18 @@ SIMPLE_JWT = {
 }
 
 # CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = _env_list(
+    'CORS_ALLOWED_ORIGINS',
+    ['http://localhost:3000'],
+)
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = _env_list(
+    'CSRF_TRUSTED_ORIGINS',
+    ['http://localhost:3000'],
+)
+
+# Opt into deployment-specific security headers without breaking local HTTP development.
+SECURE_SSL_REDIRECT = _env_bool('DJANGO_SECURE_SSL_REDIRECT')
+SESSION_COOKIE_SECURE = _env_bool('DJANGO_SESSION_COOKIE_SECURE')
+CSRF_COOKIE_SECURE = _env_bool('DJANGO_CSRF_COOKIE_SECURE')

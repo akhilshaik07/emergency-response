@@ -8,6 +8,10 @@ interface HealthData {
   error?: string;
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Request failed";
+}
+
 export default function ClientHealthCheck() {
   const [clientHealth, setClientHealth] = useState<HealthData | null>(null);
   const [dbHealth, setDbHealth] = useState<HealthData | null>(null);
@@ -17,22 +21,31 @@ export default function ClientHealthCheck() {
     const apiBase =
       process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-    async function checkHealth() {
-      try {
-        // Test client-side fetch to /health (verifying CORS)
-        const healthRes = await fetch(`${apiBase}/health`);
-        const healthJson = await healthRes.json();
-        setClientHealth(healthJson);
-
-        // Test client-side fetch to /health/db (verifying CORS + DB)
-        const dbRes = await fetch(`${apiBase}/health/db`);
-        const dbJson = await dbRes.json();
-        setDbHealth(dbJson);
-      } catch (err: any) {
-        setClientHealth({ error: err.message || "Failed client-side fetch" });
-      } finally {
-        setLoading(false);
+    async function fetchHealth(path: string): Promise<HealthData> {
+      const response = await fetch(`${apiBase}${path}`);
+      if (!response.ok) {
+        throw new Error(`${path} returned HTTP ${response.status}`);
       }
+      return response.json() as Promise<HealthData>;
+    }
+
+    async function checkHealth() {
+      const [clientResult, dbResult] = await Promise.allSettled([
+        fetchHealth("/health"),
+        fetchHealth("/health/db"),
+      ]);
+
+      setClientHealth(
+        clientResult.status === "fulfilled"
+          ? clientResult.value
+          : { error: errorMessage(clientResult.reason) },
+      );
+      setDbHealth(
+        dbResult.status === "fulfilled"
+          ? dbResult.value
+          : { error: errorMessage(dbResult.reason) },
+      );
+      setLoading(false);
     }
 
     checkHealth();

@@ -9,8 +9,11 @@ async function getServerHealth() {
     const res = await fetch(`${apiBase}/health`, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     return await res.json();
-  } catch (err: any) {
-    return { status: "error", error: err.message || "Failed server fetch" };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: error instanceof Error ? error.message : "Failed server fetch",
+    };
   }
 }
 
